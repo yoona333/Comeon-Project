@@ -604,7 +604,13 @@ app.get('/api/activities/my', verifyToken, (req, res) => {
 
   // 合并查询，直接获取用户报名的活动信息和总数
   const query = `
-    SELECT SQL_CALC_FOUND_ROWS a.*, c.name as club_name, u.username as organizer  
+    SELECT SQL_CALC_FOUND_ROWS a.*, c.name as club_name, u.username as organizer,
+    -- 添加活动状态判断逻辑
+    CASE 
+      WHEN a.start_time > NOW() THEN 0    -- 未开始
+      WHEN a.end_time < NOW() THEN 2      -- 已结束
+      ELSE 1                              -- 进行中
+    END time_status
     FROM activity_participants ap
     JOIN activities a ON ap.activity_id = a.id
     JOIN clubs c ON a.club_id = c.id
@@ -616,7 +622,7 @@ app.get('/api/activities/my', verifyToken, (req, res) => {
 
   const countQuery = 'SELECT FOUND_ROWS() as total';
 
-  db.query(query, [userId, limit, offset], (error, results) => {
+  db.query(query, [userId, limit, offset], (error, data) => {
     if (error) {
       console.error('Activities query error:', error);
       return res.status(500).json({ success: false, message: error.message });
@@ -630,14 +636,55 @@ app.get('/api/activities/my', verifyToken, (req, res) => {
 
       const totalPages = Math.ceil(countResults[0].total / limit);
 
-      console.log('Returning activities data:', results);
+      console.log('Returning activities data:', data);
 
       res.json({
         success: true,
-        data: results,
+        data: data,
         totalPages: totalPages,
         currentPage: page
       });
+      console.log('Returning activities data:', data);
+
+    });
+  });
+});
+
+// 获取单个活动详情
+app.get('/api/activities/:id', verifyToken, (req, res) => {
+  const activityId = req.params.id;
+  const userId = req.userId;
+
+  // 查询单个活动详情并包含状态信息
+  const query = `
+    SELECT a.*, c.name as club_name, u.username as organizer,
+    CASE 
+      WHEN a.start_time > NOW() THEN 0    -- 未开始
+      WHEN a.end_time < NOW() THEN 2      -- 已结束
+      ELSE 1                              -- 进行中
+    END as time_status
+    FROM activities a
+    JOIN clubs c ON a.club_id = c.id
+    JOIN users u ON c.leader_id = u.id
+    WHERE a.id = ? AND EXISTS (
+      SELECT 1 FROM activity_participants 
+      WHERE activity_id = a.id AND user_id = ?
+    )
+  `;
+
+  db.query(query, [activityId, userId], (error, results) => {
+    if (error) {
+      console.error('Activity detail error:', error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, message: '活动不存在或您未报名参加' });
+    }
+
+    res.json({
+      success: true,
+      data: results[0]
     });
   });
 });

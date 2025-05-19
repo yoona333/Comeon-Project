@@ -1,12 +1,16 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './activity-list.module.scss'; // 导入SCSS文件
 import { Table, Tag, Button, message, Spin, Typography, Modal } from 'antd';
 import axios from 'axios';
 import Link from 'next/link';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc'; // 引入 utc 插件
+import timezone from 'dayjs/plugin/timezone'; // 引入时区插件
 
-const { Title } = Typography;
+dayjs.extend(utc); // 使用 utc 插件
+dayjs.extend(timezone); // 使用时区插件
+dayjs.tz.setDefault(Intl.DateTimeFormat().resolvedOptions().timeZone); // 设置默认时区
 
 interface Activity {
   id: number;
@@ -14,17 +18,15 @@ interface Activity {
   location: string;
   start_time: string;
   end_time: string;
-  status: number;
+  time_status: number; // 0: 未开始, 1: 进行中, 2: 已结束
   points: number;
   club_name: string;
+  organizer: string;
 }
 
 // 定义活动详情的接口
 interface ActivityDetail extends Activity {
-  // 可以根据实际后端返回的数据添加更多字段
   description: string;
-  organizer: string;
-  // 其他字段...
 }
 
 const ActivityListPage: React.FC = () => {
@@ -32,7 +34,6 @@ const ActivityListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const [popupMessage, setPopupMessage] = useState<string | null>(null);
   // 新增状态：控制模态框显示隐藏
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   // 新增状态：存储活动详情信息
@@ -70,14 +71,23 @@ const ActivityListPage: React.FC = () => {
     }
   };
 
+  // 根据后端返回的status字段获取状态标签
   const getStatusTag = (status: number) => {
-    switch (status) {
-      case 0: return <Tag color="orange">未开始</Tag>;
-      case 1: return <Tag color="green">进行中</Tag>;
-      case 2: return <Tag color="blue">已结束</Tag>;
-      case 3: return <Tag color="red">已取消</Tag>;
-      default: return <Tag color="default">未知</Tag>;
+    switch(status) {
+      case 0:
+        return <Tag color="gold">未开始</Tag>;
+      case 1:
+        return <Tag color="green">进行中</Tag>;
+      case 2:
+        return <Tag color="blue">已结束</Tag>;
+      default:
+        return <Tag color="gray">未知</Tag>;
     }
+  };
+
+  // 格式化日期显示
+  const formatDateTime = (utcTime: string) => {
+    return dayjs.utc(utcTime).local().format('YYYY-MM-DD HH:mm:ss');
   };
 
   const showActivityDetail = async (activityId: number) => {
@@ -88,12 +98,11 @@ const ActivityListPage: React.FC = () => {
     }
     setModalLoading(true);
     try {
-      const response = await axios.get(`http://localhost:8080/api/activities/my?activityId=${activityId}`, {
+      const response = await axios.get(`http://localhost:8080/api/activities/${activityId}`, {
         headers: { 'x-access-token': token }
       });
       if (response.data.success) {
-        // 假设后端返回的第一条数据就是详情信息
-        setActivityDetail(response.data.data[0]);
+        setActivityDetail(response.data.data);
         setDetailModalVisible(true);
       } else {
         message.error(response.data.message || '获取活动详情失败');
@@ -129,13 +138,19 @@ const ActivityListPage: React.FC = () => {
       title: '开始时间',
       dataIndex: 'start_time',
       key: 'start_time',
-      render: (text: string) => new Date(text).toLocaleString()
+      render: (text: string) => formatDateTime(text)
+    },
+    {
+      title: '结束时间',
+      dataIndex: 'end_time',
+      key: 'end_time',
+      render: (text: string) => formatDateTime(text)
     },
     {
       title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: number) => getStatusTag(status)
+      dataIndex: 'time_status', 
+      key: 'time_status',
+      render: (time_status: number) => getStatusTag(time_status)
     },
     {
       title: '积分',
@@ -154,41 +169,76 @@ const ActivityListPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Title level={3}>我的活动</Title>
-      <Table 
-        columns={columns} 
-        dataSource={activities} 
-        rowKey="id" 
-        pagination={{ pageSize: 10 }}
-        locale={{ emptyText: '暂无活动数据' }}
-      />
-      {/* 活动详情弹窗 */}
-      <Modal
-        title={activityDetail?.title}
-        open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
-        footer={[
-          <Button key="back" onClick={() => setDetailModalVisible(false)}>
-            关闭
-          </Button>
-        ]}
-        width={700}
-        loading={modalLoading}
-      >
-        {activityDetail && (
-          <div>
-            <p><strong>活动描述：</strong>{activityDetail.description}</p>
-            <p><strong>举办社团：</strong>{activityDetail.club_name}</p>
-            <p><strong>活动地点：</strong>{activityDetail.location}</p>
-            <p><strong>开始时间：</strong>{new Date(activityDetail.start_time).toLocaleString()}</p>
-            <p><strong>结束时间：</strong>{new Date(activityDetail.end_time).toLocaleString()}</p>
-            <p><strong>状态：</strong>{getStatusTag(activityDetail.status)}</p>
-            <p><strong>积分：</strong>{activityDetail.points}</p>
-            <p><strong>组织者：</strong>{activityDetail.organizer}</p>
-          </div>
-        )}
-      </Modal>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <Typography.Title level={3} className="mb-6 text-2xl font-bold text-gray-800">我的活动</Typography.Title>
+        
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <Table 
+            columns={columns} 
+            dataSource={activities} 
+            rowKey="id" 
+            pagination={{ pageSize: 10 }}
+            locale={{ emptyText: '暂无活动数据' }}
+            loading={loading}
+            className="min-w-full"
+          />
+        </div>
+        
+        {/* 活动详情弹窗 */}
+        <Modal
+          title={activityDetail?.title || '活动详情'}
+          open={detailModalVisible}
+          onCancel={() => setDetailModalVisible(false)}
+          footer={[
+            <Button key="back" onClick={() => setDetailModalVisible(false)}>
+              关闭
+            </Button>
+          ]}
+          width={700}
+          loading={modalLoading}
+        >
+          {activityDetail && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-lg font-semibold text-gray-800">{activityDetail.title}</p>
+                <p className="text-gray-600">{activityDetail.description}</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">举办社团</p>
+                  <p className="font-medium">{activityDetail.club_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">组织者</p>
+                  <p className="font-medium">{activityDetail.organizer}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">活动地点</p>
+                  <p className="font-medium">{activityDetail.location}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">积分</p>
+                  <p className="font-medium">{activityDetail.points}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">开始时间</p>
+                  <p className="font-medium">{formatDateTime(activityDetail.start_time)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">结束时间</p>
+                  <p className="font-medium">{formatDateTime(activityDetail.end_time)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">活动状态</p>
+                  <p className="font-medium">{getStatusTag(activityDetail.time_status)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal>
+      </div>
     </div>
   );
 };
