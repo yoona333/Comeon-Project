@@ -5,8 +5,15 @@ import { Card, Table, Tag, Button, Space, Input, Modal, message, Popconfirm, Swi
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import styles from '../../../src/styles/Admin.module.scss';
+
+// 定义JWT负载接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
+  userId: number;
+}
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -42,8 +49,8 @@ export default function ManageStudents() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -83,7 +90,7 @@ export default function ManageStudents() {
       });
       
       // 只过滤出学生用户（role === 1）
-      const studentUsers = response.data.data.filter(user => user.role === 1);
+      const studentUsers = response.data.data.filter((user: any) => user.role === 1);
       setStudents(studentUsers);
     } catch (error) {
       console.error('获取学生列表失败:', error);

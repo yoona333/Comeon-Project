@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Layout, Menu, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import React from 'react';
 
 const { Sider, Content } = Layout;
 
 // 不同角色的路由前缀和菜单配置
-const roleConfig = {
+const roleConfig: Record<number, { pathPrefix: string; redirectPath: string; menu: any[] }> = {
   1: { // 学生
     pathPrefix: '/student',
     redirectPath: '/student',
@@ -24,15 +25,11 @@ const roleConfig = {
   }
 };
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [userRole, setUserRole] = useState(null);
+  const [userRole, setUserRole] = useState<number | null>(null);
   
-  useEffect(() => {
-    checkUserAccess();
-  }, []);
-  
-  const checkUserAccess = async () => {
+  const checkUserAccess = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/login');
@@ -63,11 +60,15 @@ export default function AppLayout({ children }) {
       console.error('获取用户信息失败:', error);
       router.push('/login');
     }
-  };
+  }, [router]);
+  
+  useEffect(() => {
+    checkUserAccess();
+  }, [checkUserAccess]);
   
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {userRole && (
+      {userRole && roleConfig[userRole] && (
         <Sider>
           <Menu 
             theme="dark" 

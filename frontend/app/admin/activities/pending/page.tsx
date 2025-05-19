@@ -225,7 +225,7 @@ const PendingActivitiesPage: React.FC = () => {
     {
       title: '时间',
       key: 'time',
-      render: (_, record: Activity) => (
+      render: (_: any, record: Activity) => (
         <>
           {record.start_time && record.end_time ? 
             `${new Date(record.start_time).toLocaleString()} 至 ${new Date(record.end_time).toLocaleString()}` : 
@@ -252,7 +252,7 @@ const PendingActivitiesPage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_, record: Activity) => (
+      render: (_: any, record: Activity) => (
         <Space>
           <Button 
             type="primary" 

@@ -4,8 +4,14 @@ import { Table, Tag, Button, message, Modal, Form, Input, Select, Space, Card, P
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+
+// 自定义JWT接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
+}
 
 const { TextArea } = Input;
 
@@ -40,8 +46,8 @@ export default function ManageClubs() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -173,7 +179,7 @@ export default function ManageClubs() {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
+      render: (_: unknown, record: Club) => (
         <Space>
           <Button type="link" icon={<EditOutlined />} onClick={() => showModal(record)}>
             编辑

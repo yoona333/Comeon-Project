@@ -5,8 +5,14 @@ import { Card, Table, Button, message, Popconfirm, Typography } from 'antd';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { UserOutlined, LockOutlined, ReloadOutlined } from '@ant-design/icons';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import styles from '../../../src/styles/Admin.module.scss';
+
+// 自定义JWT接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
+}
 
 const { Title } = Typography;
 
@@ -32,8 +38,8 @@ export default function PasswordRequests() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -104,11 +110,11 @@ export default function PasswordRequests() {
     {
       title: '操作',
       key: 'action',
-      render: (_: any, record: string) => (
+      render: (_: any, record: { username: string; key: string }) => (
         <Popconfirm
           title="确定要重置该用户的密码吗？"
           description="密码将被重置为随机密码，用户将收到新密码。"
-          onConfirm={() => handleResetPassword(record)}
+          onConfirm={() => handleResetPassword(record.username)}
           okText="确定"
           cancelText="取消"
         >

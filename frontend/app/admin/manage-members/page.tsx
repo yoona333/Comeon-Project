@@ -178,7 +178,7 @@ export default function ManageMembers() {
 
   const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchText.toLowerCase()) ||
-    (user.club_name && user.club_name.toLowerCase().includes(searchText.toLowerCase()))
+    (user.club_names && user.club_names.toLowerCase().includes(searchText.toLowerCase()))
   );
 
   const columns = [

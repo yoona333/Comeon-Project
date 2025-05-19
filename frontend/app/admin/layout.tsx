@@ -10,6 +10,11 @@ import axios from 'axios';
 
 const { Content } = Layout;
 
+interface SidebarProps {
+  collapsed: boolean;
+  role?: string;
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -72,7 +77,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       />
       <Layout>
         <Sidebar 
-          role="admin" 
           collapsed={collapsed} 
         />
         <Content className={`${styles.content} ${collapsed ? styles.contentCollapsed : ''}`}>

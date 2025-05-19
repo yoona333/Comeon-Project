@@ -12,9 +12,7 @@ import {
   TeamOutlined,
   SettingOutlined,
   KeyOutlined,
-  AuditOutlined,
-  GiftOutlined,
-  LineChartOutlined
+  AuditOutlined
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -212,17 +210,6 @@ export default function Sidebar({ collapsed }: SidebarProps) {
         ]
       },
       {
-        key: 'points',
-        icon: <GiftOutlined />,
-        label: <>积分管理</>,
-        children: [
-          {
-            key: 'points-blockchain',
-            label: <Link href={`${homeRole}/points/blockchain`}>积分上链</Link>,
-          }
-        ]
-      },
-      {
         key: 'settings',
         icon: <SettingOutlined />,
         label: <>系统设置</>,
@@ -234,6 +221,23 @@ export default function Sidebar({ collapsed }: SidebarProps) {
           {
             key: 'change-password',
             label: <Link href={`${homeRole}/change-password`}>修改密码</Link>,
+          }
+        ]
+      },
+      // 为管理员添加社团积分列表菜单项
+      {
+        key: 'club-points',
+        icon: <KeyOutlined />,
+        label: <Link href={`${homeRole}/club-points`}>社团积分论坛</Link>,
+      },
+      {
+        key: 'points-management',
+        icon: <TrophyOutlined />,
+        label: <>积分管理</>,
+        children: [
+          {
+            key: 'points-onchain',
+            label: <Link href={`${homeRole}/points/blockchain`}>积分上链</Link>,
           }
         ]
       }
@@ -267,6 +271,12 @@ export default function Sidebar({ collapsed }: SidebarProps) {
         key: 'profile',
         icon: <UserOutlined />,
         label: <Link href={`${homeRole}/profile`}>个人信息</Link>,
+      },
+      // 为学生和社长添加社团积分列表菜单项
+      {
+        key: 'club-points',
+        icon: <KeyOutlined />,
+        label: <Link href={`${homeRole}/club-points`}>社团积分论坛</Link>,
       }
     ];
 

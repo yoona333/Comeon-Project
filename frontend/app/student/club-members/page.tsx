@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Button, Space, Typography, message, Modal, Form, Input, Select } from 'antd';
 import { UserOutlined, PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import styles from '../../../src/styles/Student.module.scss';
+
+// 自定义JWT接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
+}
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -40,8 +46,8 @@ export default function ClubMembers() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;

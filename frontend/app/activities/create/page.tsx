@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import axios from 'axios';
-import Home from '../../homedaohan/page'; // 复用现有导航组件
+import Sidebar from '../../components/ui/Sidebar'; // 引入Sidebar组件
 import withAuthentication from '../../api/jwt'; // 复用现有认证组件
 import styles from '../../css/add.module.css'; // 复用现有样式
 import { useRouter } from 'next/navigation';
@@ -80,7 +80,7 @@ const CreateActivity: React.FC = () => {
     }
   };
 
-  const handleLoginSuccess = (userData) => {
+  const handleLoginSuccess = (userData: { role: number }) => {
     const role = userData.role;
     
     if (role === 0) {
@@ -94,7 +94,7 @@ const CreateActivity: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Home />
+      <Sidebar role="student" collapsed={false} />
       <div className={styles.content}>
         <h1>创建新活动</h1>
         {success && <div className={styles.successMessage}>活动创建成功！正在跳转...</div>}

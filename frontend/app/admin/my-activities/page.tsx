@@ -1,11 +1,12 @@
 'use client';
 
-import { Table, Tag, Button, message, Modal, Form, Input, DatePicker, Space, Card, Select } from 'antd';
+import { Table, Tag, Button, message, Modal, Form, Input, DatePicker, Space, Card, Select, InputNumber } from 'antd';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -22,6 +23,12 @@ interface Activity {
   max_participants: number;
   status: number;
   created_at: string;
+}
+
+// 自定义JWT接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
 }
 
 export default function MyActivities() {
@@ -46,8 +53,8 @@ export default function MyActivities() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -193,7 +200,7 @@ export default function MyActivities() {
       dataIndex: 'status',
       key: 'status',
       render: (status: number) => {
-        const statusMap = {
+        const statusMap: Record<number, { text: string; color: string }> = {
           0: { text: '待审批', color: 'warning' },
           1: { text: '已通过', color: 'success' },
           2: { text: '已拒绝', color: 'error' },
@@ -204,7 +211,7 @@ export default function MyActivities() {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
+      render: (_: unknown, record: Activity) => (
         <Space>
           <Button type="link" icon={<EditOutlined />} onClick={() => showModal(record)}>
             编辑

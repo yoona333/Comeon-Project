@@ -64,7 +64,7 @@ const ActivityListPage: React.FC = () => {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [router]);
 
   const checkAuth = () => {
     const token = localStorage.getItem('token');
@@ -416,11 +416,11 @@ const ActivityListPage: React.FC = () => {
     {
       title: '时间',
       key: 'time',
-      render: (_, record: Activity) => (
+      render: (_: unknown, record: Activity) => (
         <>
           {record.start_time && record.end_time ? 
             `${new Date(record.start_time).toLocaleString()} 至 ${new Date(record.end_time).toLocaleString()}` : 
-            '暂无时间信息'}
+            '时间待定'}
         </>
       ),
     },
@@ -428,7 +428,7 @@ const ActivityListPage: React.FC = () => {
     {
       title: '报名时间',
       key: 'registration_time',
-      render: (_, record: Activity) => (
+      render: (_: unknown, record: Activity) => (
         <>
           {record.registration_time ? new Date(record.registration_time).toLocaleString() : '暂无报名时间'}
         </>
@@ -437,7 +437,7 @@ const ActivityListPage: React.FC = () => {
     {
       title: '参与人数',
       key: 'participants',
-      render: (_, record: Activity) => (
+      render: (_: unknown, record: Activity) => (
         <>
           {record.participant_count}/{record.max_participants || 0}
         </>
@@ -452,7 +452,7 @@ const ActivityListPage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_, record: Activity) => (
+      render: (_: unknown, record: Activity) => (
         <Space>
           <Button type="primary" size="small" icon={<EditOutlined />} onClick={() => showModal(record)}>
             编辑

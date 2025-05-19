@@ -120,7 +120,7 @@ const AssignPoints: React.FC = () => {
             className={styles.inputField}
             required
           >
-            <option value="">选择用户</option>
+            <option value={``}>选择用户</option>
             {users.map(user => (
               <option key={user.id} value={user.id}>{user.username}</option>
             ))}
@@ -133,7 +133,7 @@ const AssignPoints: React.FC = () => {
             className={styles.inputField}
             required
           >
-            <option value="">选择活动</option>
+            <option value={``}>选择活动</option>
             {activities.map(activity => (
               <option key={activity.id} value={activity.id}>{activity.title}</option>
             ))}

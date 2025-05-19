@@ -8,7 +8,7 @@ import type { ColumnsType } from 'antd/es/table';
 import styles from '../../../src/styles/Admin.module.scss';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -28,6 +28,13 @@ interface User {
   lastLogin: string;
   points: number;
   avatar?: string;
+}
+
+// 定义JWT负载接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
+  userId: number;
 }
 
 export default function ManageUsers() {
@@ -54,8 +61,8 @@ export default function ManageUsers() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -351,7 +358,7 @@ export default function ManageUsers() {
   
   // 处理表格选择变化
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
-    setSelectedRowKeys(newSelectedKeys);
+    setSelectedRowKeys(newSelectedRowKeys);
   };
 
   const rowSelection = {

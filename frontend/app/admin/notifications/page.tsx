@@ -131,7 +131,7 @@ export default function StudentReservations() {
     {
       title: '状态',
       key: 'status',
-      render: (_, record: Reservation) => {
+      render: (_: any, record: Reservation) => {
         if (record.is_rejection) {
           return (
             <MailOutlined style={{ color: 'orange', fontSize: '18px' }} title="审批被拒绝" />
@@ -148,7 +148,7 @@ export default function StudentReservations() {
       title: '通知名称',
       dataIndex: 'title',
       key: 'title',
-      render: (text, record: Reservation) => {
+      render: (text: string, record: Reservation) => {
         return record.is_rejection ? '拒绝通知' : text;
       }
     },
@@ -165,7 +165,7 @@ export default function StudentReservations() {
     {
       title: '操作',
       key: 'action',
-      render: (_, record: Reservation) => (
+      render: (_: any, record: Reservation) => (
         <button onClick={() => handleViewDetail(record)}>
           {record.is_rejection ? '查看拒绝理由' : '查看详情'}
         </button>
@@ -179,14 +179,14 @@ export default function StudentReservations() {
         <Table
           columns={columns}
           dataSource={reservations}
-          rowKey={(record: Reservation) => record.reservation_id || record.rejection_id}
+          rowKey={(record: Reservation) => String(record.reservation_id || record.rejection_id || '')}
           loading={loading}
           pagination={{ pageSize: 10 }}
         />
       </Card>
       <Modal
         title={selectedReservation?.is_rejection ? '审批拒绝详情' : '预约详情'}
-        visible={modalVisible}
+        open={modalVisible}
         onCancel={handleModalClose}
         footer={null}
       >

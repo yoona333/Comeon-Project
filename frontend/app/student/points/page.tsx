@@ -37,11 +37,18 @@ export default function PointsPage() {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
+        console.log('获取到的 token:', token); // 打印 token 检查是否正确获取
+        if (!token) {
+          console.error('未获取到 token');
+          message.error('请先登录');
+          return;
+        }
         const response = await axios.get('http://localhost:8080/api/points-ranking', {
           headers: {
             'x-access-token': token,
           },
         });
+        console.log('积分排行榜响应数据:', response.data); // 打印响应数据检查是否正确
         const { ranking, userRank, userRemainingPoints } = response.data.data;
         setLeaderboardData(ranking);
         const totalStudents = ranking.length;
@@ -55,6 +62,9 @@ export default function PointsPage() {
         }));
       } catch (error) {
         console.error('获取积分排行榜失败:', error);
+        if (axios.isAxiosError(error)) {
+          console.error('Axios 错误信息:', error.response?.data); // 打印 Axios 错误响应数据
+        }
         message.error('获取积分排行榜失败，请稍后重试');
       } finally {
         setLoading(false);
@@ -399,7 +409,11 @@ export default function PointsPage() {
           dataSource={leaderboardData}
           renderItem={(item, index) => (
             <List.Item
-              extra={<Statistic value={item.points} />}
+              extra={(
+                <>
+                  <Statistic value={item.remainingPoints} suffix=" 积分" />
+                </>
+              )}
             >
               <List.Item.Meta
                 title={`第 ${index + 1} 名`}

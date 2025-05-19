@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Card, Table, Tag, Button, Space, Input, Form, Row, Col, Select, DatePicker, Modal, message, Popconfirm } from 'antd';
+import { useState, useRef, useEffect } from 'react';
+import { Card, Table, Tag, Button, Space, Input, Form, Row, Col, Select, DatePicker, Modal, message, Popconfirm, InputNumber } from 'antd';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import type { InputRef } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import styles from '../../../src/styles/Admin.module.scss';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 import dayjs from 'dayjs';
-import jwtDecode from 'jwt-decode';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -27,6 +27,12 @@ interface Activity {
   points: number;
   maxParticipants: number;
   currentParticipants: number;
+}
+
+// 自定义JWT接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
 }
 
 export default function ManageActivities() {
@@ -53,8 +59,8 @@ export default function ManageActivities() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -323,7 +329,7 @@ export default function ManageActivities() {
   
   // 处理表格选择变化
   const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
-    setSelectedRowKeys(newSelectedKeys);
+    setSelectedRowKeys(newSelectedRowKeys);
   };
 
   const rowSelection = {

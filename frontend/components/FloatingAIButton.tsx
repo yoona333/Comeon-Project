@@ -176,6 +176,32 @@ const FloatingAIButton: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // 处理拖动相关事件的监听器
+  useEffect(() => {
+    const handleDragMove = (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y
+        });
+      }
+    };
+    
+    const handleDragStop = () => {
+      setIsDragging(false);
+    };
+    
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragStop);
+    }
+    
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragStop);
+    };
+  }, [isDragging, dragOffset]);
+
   // 处理拖动开始
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
     if (buttonRef.current) {
@@ -187,34 +213,6 @@ const FloatingAIButton: React.FC = () => {
       });
     }
   };
-
-  // 处理拖动中
-  const handleDrag = (e: MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
-      });
-    }
-  };
-
-  // 处理拖动结束
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
-  // 添加全局鼠标事件监听器
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleDrag);
-      window.addEventListener('mouseup', handleDragEnd);
-    }
-    
-    return () => {
-      window.removeEventListener('mousemove', handleDrag);
-      window.removeEventListener('mouseup', handleDragEnd);
-    };
-  }, [isDragging]);
 
   // 格式化知识库为文本
   const formatKnowledgeBase = () => {
@@ -267,7 +265,7 @@ const FloatingAIButton: React.FC = () => {
         setIsLoadingScript(false);
       }
     }
-  }, []);
+  }, [isLoadingScript]);
 
   // 发送消息到API
   const callAIAPI = async (userMessage: string) => {
@@ -1004,8 +1002,7 @@ ${formatKnowledgeBase()}
 【学术类】：讲座、论坛、研讨会等
 【社团类】：各种学生社团活动
 
-这样我可以根据你的兴趣提供更精准的活动推荐。`;
-      }
+这样我可以根据你的兴趣提供更精准的活动推荐。`;      }
       
       // 基于兴趣进行推荐
       let response = '';
@@ -1138,7 +1135,7 @@ ${formatKnowledgeBase()}
     });
     
     try {
-      const testPrompt = "你好，这是一条测试消息，请简短回复\"你好，我已连接成功\"";
+      const testPrompt = "你好，这是一条测试消息，请简短回复「你好，我已连接成功」";
       let response;
       
       console.log(`使用${cloudProvider}提供商测试连接`);
@@ -1597,7 +1594,7 @@ ${formatKnowledgeBase()}
         {serviceType === 'cloud' && cloudProvider === 'kimi' && (
           <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f8ff', borderRadius: '8px' }}>
             <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-              注意：Kimi API使用与OpenAI兼容的接口，但需要将baseURL设置为"https://api.kimi.ai/v1"。
+              注意：Kimi API使用与OpenAI兼容的接口，但需要将baseURL设置为&quot;https://api.kimi.ai/v1&quot;。
               本组件已经自动完成了这些配置，您只需填入API密钥即可使用。
             </Typography.Text>
           </div>
@@ -1628,16 +1625,16 @@ ${formatKnowledgeBase()}
               2. 登录您的OpenAI账户（如果没有账户，需要先注册）
             </Typography.Paragraph>
             <Typography.Paragraph>
-              3. 点击右上角头像，选择"View API keys"
+              3. 点击右上角头像，选择&quot;View API keys&quot;
             </Typography.Paragraph>
             <Typography.Paragraph>
-              4. 点击"Create new secret key"按钮创建新的API密钥
+              4. 点击&quot;Create new secret key&quot;按钮创建新的API密钥
             </Typography.Paragraph>
             <Typography.Paragraph>
               5. 复制生成的密钥（注意：密钥只会显示一次，请务必保存）
             </Typography.Paragraph>
             <Typography.Paragraph>
-              6. 将复制的密钥粘贴到设置面板的"OpenAI API密钥"输入框中
+              6. 将复制的密钥粘贴到设置面板的&quot;OpenAI API密钥&quot;输入框中
             </Typography.Paragraph>
             <Typography.Paragraph type="warning">
               注意：使用OpenAI API需要进行付费，详细的收费标准请参考OpenAI官方文档。
@@ -1656,10 +1653,10 @@ ${formatKnowledgeBase()}
               2. 登录或注册Kimi账户
             </Typography.Paragraph>
             <Typography.Paragraph>
-              3. 点击右上角头像，选择"API Keys"
+              3. 点击右上角头像，选择&quot;API Keys&quot;
             </Typography.Paragraph>
             <Typography.Paragraph>
-              4. 点击"创建API Key"按钮
+              4. 点击&quot;创建API Key&quot;按钮
             </Typography.Paragraph>
             <Typography.Paragraph>
               5. 输入名称并创建Key（格式类似：sk-xxxxxxxxxxxxxxxx）
@@ -1668,7 +1665,7 @@ ${formatKnowledgeBase()}
               6. 复制生成的API Key，将其粘贴到设置面板中
             </Typography.Paragraph>
             <Typography.Paragraph type="warning">
-              注意：Kimi API密钥格式通常为"sk-"开头的字符串。请妥善保管您的API密钥，不要在公开场合分享。
+              注意：Kimi API密钥格式通常为&quot;sk-&quot;开头的字符串。请妥善保管您的API密钥，不要在公开场合分享。
             </Typography.Paragraph>
           </Tabs.TabPane>
           
@@ -1692,7 +1689,7 @@ ${formatKnowledgeBase()}
               5. 复制生成的API密钥
             </Typography.Paragraph>
             <Typography.Paragraph>
-              6. 将复制的密钥粘贴到设置面板的"Moonshot API密钥"输入框中
+              6. 将复制的密钥粘贴到设置面板的&quot;Moonshot API密钥&quot;输入框中
             </Typography.Paragraph>
           </Tabs.TabPane>
           
@@ -1710,13 +1707,13 @@ ${formatKnowledgeBase()}
               3. 开通文心一言服务
             </Typography.Paragraph>
             <Typography.Paragraph>
-              4. 进入控制台，找到"应用接入"选项
+              4. 进入控制台，找到&quot;应用接入&quot;选项
             </Typography.Paragraph>
             <Typography.Paragraph>
               5. 创建应用并获取API Key和Secret Key
             </Typography.Paragraph>
             <Typography.Paragraph>
-              6. 将API Key和Secret Key按格式 "API_KEY:SECRET_KEY" 填入设置中
+              6. 将API Key和Secret Key按格式 &quot;API_KEY:SECRET_KEY&quot; 填入设置中
             </Typography.Paragraph>
             <Typography.Paragraph type="warning">
               注意：百度文心一言API密钥格式需要同时包含API Key和Secret Key，用冒号分隔
@@ -1737,13 +1734,13 @@ ${formatKnowledgeBase()}
               3. 进入控制台
             </Typography.Paragraph>
             <Typography.Paragraph>
-              4. 在"API Key管理"中创建新的API Key
+              4. 在&quot;API Key管理&quot;中创建新的API Key
             </Typography.Paragraph>
             <Typography.Paragraph>
               5. 复制生成的API Key
             </Typography.Paragraph>
             <Typography.Paragraph>
-              6. 将复制的API Key粘贴到设置面板的"智谱GLM API密钥"输入框中
+              6. 将复制的API Key粘贴到设置面板的&quot;智谱GLM API密钥&quot;输入框中
             </Typography.Paragraph>
           </Tabs.TabPane>
         </Tabs>

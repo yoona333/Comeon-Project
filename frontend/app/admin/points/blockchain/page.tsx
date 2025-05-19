@@ -133,8 +133,8 @@ export default function PointsBlockchainPage() {
               <ol>
                 <li>打开MetaMask插件</li>
                 <li>点击顶部的网络选择下拉菜单</li>
-                <li>选择"Sepolia测试网"</li>
-                <li>如果没有Sepolia选项，请点击"添加网络"</li>
+                <li>选择&ldquo;Sepolia测试网&rdquo;</li>
+                <li>如果没有Sepolia选项，请点击&ldquo;添加网络&rdquo;</li>
                 <li>在设置中添加Sepolia测试网</li>
               </ol>
               <p>完成后请刷新页面重试。</p>

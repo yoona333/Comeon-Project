@@ -4,10 +4,14 @@ import { Table, Tag, Button, message, Modal, Form, Input, Select, Space, Card, P
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { jwtDecode } from 'jwt-decode';
+import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 
-const { TextArea } = Input;
+// 自定义JWT接口
+interface CustomJwtPayload {
+  exp?: number;
+  role: number;
+}
 
 interface Role {
   id: number;
@@ -38,8 +42,8 @@ export default function ManageRoles() {
     }
 
     try {
-      const decoded = jwtDecode(token);
-      if (decoded.exp < Date.now() / 1000) {
+      const decoded = jwtDecode<CustomJwtPayload>(token);
+      if (decoded.exp && decoded.exp < Date.now() / 1000) {
         message.error('登录已过期，请重新登录');
         router.push('/login');
         return;
@@ -165,7 +169,7 @@ export default function ManageRoles() {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
+      render: (_: unknown, record: Role) => (
         <Space>
           <Button type="link" icon={<EditOutlined />} onClick={() => showModal(record)}>
             编辑
@@ -224,7 +228,7 @@ export default function ManageRoles() {
             label="角色描述"
             rules={[{ required: true, message: '请输入角色描述' }]}
           >
-            <TextArea rows={4} />
+            <Input.TextArea rows={4} />
           </Form.Item>
 
           <Form.Item

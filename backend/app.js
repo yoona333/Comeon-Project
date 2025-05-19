@@ -853,8 +853,6 @@ app.post('/points/assign', verifyToken, (req, res) => {
   });
 });
 
-// ... existing code ...
-
 app.get('/api/points-ranking', verifyToken, (req, res) => {
   const userId = req.userId;
 
@@ -863,8 +861,8 @@ app.get('/api/points-ranking', verifyToken, (req, res) => {
     SELECT 
       u.id,
       u.username,
-      (COALESCE((SELECT SUM(p.points) FROM points p WHERE p.user_id = u.id), 0) - 
-       COALESCE((SELECT SUM(per.points) FROM points_exchange_records per JOIN products pr ON per.product_id = pr.id WHERE per.user_id = u.id), 0)) AS remaining_points
+      ((COALESCE((SELECT SUM(p.points) FROM points p WHERE p.user_id = u.id), 0) - 
+       COALESCE((SELECT SUM(per.points) FROM points_exchange_records per JOIN products pr ON per.product_id = pr.id WHERE per.user_id = u.id), 0))) AS remaining_points
     FROM 
       users u
     ORDER BY 
@@ -884,22 +882,29 @@ app.get('/api/points-ranking', verifyToken, (req, res) => {
       if (rankingResults[i].id === userId) {
         userRank = i + 1; // 排名从1开始
         userRemainingPoints = rankingResults[i].remaining_points; // 当前用户的剩余积分
+        console.log("userRemainingPoints:", userRemainingPoints);
         break;
       }
     }
 
+    // 构造返回的排行榜数据，确保包含每位用户的剩余积分
+    const formattedRanking = rankingResults.map((user) => ({
+      id: user.id,
+      username: user.username,
+      remainingPoints: user.remaining_points // 明确返回剩余积分字段
+    }));
+    console.log("formattedRanking:", formattedRanking);
+
     res.status(200).json({
       success: true,
       data: {
-        ranking: rankingResults,
+        ranking: formattedRanking, // 返回格式化后的排行榜数据
         userRank: userRank,
         userRemainingPoints: userRemainingPoints // 返回当前用户的剩余积分
       }
     });
   });
 });
-
-// ... existing code ...
 
 // 获取个人积分历史
 app.get('/points/history', verifyToken, (req, res) => {
@@ -3400,7 +3405,7 @@ app.put('/api/reservations/:id/mark-read', verifyToken, (req, res) => {
   const query = `
     UPDATE reservations 
     SET is_read = 1 
-    WHERE activity_id = ?
+    WHERE id = ?
   `;
   
   db.query(query, [id], (err, result) => {
@@ -3951,4 +3956,667 @@ app.get('/api/user/clubs', verifyToken, (req, res) => {
   });
 });
 
-// 获取社团活动统计数据
+
+/////评论
+
+// 获取评论板块
+
+// 获取所有板块
+app.get('/api/categories', (req, res) => {
+  const query = `
+    SELECT * FROM categories
+    ORDER BY category_id ASC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('获取板块失败:', err);
+      return res.status(500).json({ success: false, message: '获取板块失败' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+//获取特定板块的所有帖子
+
+app.get('/api/categories/:categoryId/posts', verifyToken, (req, res) => {
+  console.log('Received request to fetch posts for category:', req.params.categoryId);
+  const { categoryId } = req.params;
+  const user_id = req.user.id; // 通过验证获取到的用户ID
+
+  const query = `
+    SELECT p.*, u.username AS user_name,
+           CASE 
+               WHEN l.id IS NOT NULL THEN l.islike 
+               ELSE 0 
+           END AS is_liked
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    LEFT JOIN likes l ON p.post_id = l.post_id AND l.user_id = ?
+    WHERE p.category_id = ? AND p.deleted_at IS NULL
+    ORDER BY p.created_at DESC
+  `;
+
+  db.query(query, [user_id, categoryId], (err, results) => {
+    if (err) {
+      console.error('获取帖子失败:', err);
+      return res.status(500).json({ success: false, message: '获取帖子失败' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+// 获取特定帖子的所有评论
+
+app.get('/api/posts/:postId/comments', verifyToken, (req, res) => {
+  const { postId } = req.params;
+  const user_id = req.user.id; // 通过验证获取到的用户ID
+
+  const query = `
+    SELECT c.*, u.username AS user_name,
+           CASE 
+               WHEN l.id IS NOT NULL THEN l.islike 
+               ELSE 0 
+           END AS is_liked
+    FROM comments c
+    JOIN users u ON c.user_id = u.id
+    LEFT JOIN likes l ON c.comment_id = l.comment_id AND l.user_id = ?
+    WHERE c.post_id = ? AND c.deleted_at IS NULL
+    ORDER BY c.created_at ASC
+  `;
+
+  db.query(query, [user_id, postId], (err, results) => {
+    if (err) {
+      console.error('获取评论失败:', err);
+      return res.status(500).json({ success: false, message: '获取评论失败' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+// 获取特定评论的回复
+
+app.get('/api/comments/:commentId/replies', verifyToken, (req, res) => {
+  const { commentId } = req.params;
+  const user_id = req.user.id; // 通过验证获取到的用户ID
+
+  const query = `
+    SELECT c.*, u.username AS user_name,
+           CASE 
+               WHEN l.id IS NOT NULL THEN l.islike 
+               ELSE 0 
+           END AS is_liked
+    FROM comments c
+    JOIN users u ON c.user_id = u.id
+    LEFT JOIN likes l ON c.comment_id = l.comment_id AND l.user_id = ?
+    WHERE c.parent_comment_id = ? AND c.deleted_at IS NULL
+    ORDER BY c.created_at ASC
+  `;
+
+  db.query(query, [user_id, commentId], (err, results) => {
+    if (err) {
+      console.error('获取回复失败:', err);
+      return res.status(500).json({ success: false, message: '获取回复失败' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+// 创建新帖子
+
+app.post('/api/posts', verifyToken, (req, res) => {
+  const { title, content, category_id } = req.body;
+  const user_id = req.user.id; // 假设通过验证获取到的用户ID
+
+  const query = `
+    INSERT INTO posts (user_id, title, content, category_id)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(query, [user_id, title, content, category_id], (err, result) => {
+    if (err) {
+      console.error('创建帖子失败:', err);
+      return res.status(500).json({ success: false, message: '创建帖子失败' });
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: '帖子创建成功',
+      data: { post_id: result.insertId }
+    });
+  });
+});
+
+// 创建新评论
+
+app.post('/api/posts/:postId/comments', verifyToken, (req, res) => {
+  const { content} = req.body.comment;
+  console.log("req.body:",req.body)
+  const parent_comment_id = req.body.comment.parent_comment_id || null;
+  const user_id = req.user.id; // 假设通过验证获取到的用户ID
+  const { postId } = req.params;
+
+  let query;
+  let values;
+
+  if (parent_comment_id) {
+    // 如果是回复评论，插入评论id
+    query = `
+      INSERT INTO comments (post_id, user_id, parent_comment_id, content)
+      VALUES (?, ?, ?, ?)
+    `;
+    values = [postId, user_id, parent_comment_id, content];
+  } else {
+    // 如果是直接回复帖子，不插入评论id
+    query = `
+      INSERT INTO comments (post_id, user_id, content)
+      VALUES (?, ?, ?)
+    `;
+    values = [postId, user_id, content];
+  }
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error('创建评论失败:', err);
+      return res.status(500).json({ success: false, message: '创建评论失败' });
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: '评论创建成功',
+      data: { comment_id: result.insertId }
+    });
+  });
+});
+
+// 通用的权限验证函数
+const authorize = (req, authorId, isPostRequest) => {
+  // 如果用户角色是0（管理员）则允许操作
+  if (req.userRole === 0) {
+    return true;
+  }
+  
+  // 如果请求是POST且没有作者ID（可能是在创建新内容），则允许操作
+  if (isPostRequest && !authorId) {
+    return true;
+  }
+  
+  // 验证是否是内容的发布者
+  return req.userId === authorId;
+};
+
+// 获取帖子作者ID的函数
+const getPostAuthorId = (postId, callback) => {
+  const query = `SELECT user_id FROM posts WHERE post_id = ?`;
+  db.query(query, [postId], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results.length > 0 ? results[0].user_id : null);
+  });
+};
+
+// 获取评论作者ID的函数
+const getCommentAuthorId = (commentId, callback) => {
+  const query = `SELECT user_id FROM comments WHERE comment_id = ?`;
+  db.query(query, [commentId], (err, results) => {
+    if (err) return callback(err);
+    callback(null, results.length > 0 ? results[0].user_id : null);
+  });
+};
+
+// 删除帖子的API
+app.put('/api/posts/:postId', verifyToken, (req, res) => {
+  const { postId } = req.params;
+
+  // 先获取帖子作者ID
+  getPostAuthorId(postId, (err, authorId) => {
+    if (err) {
+      console.error('获取帖子作者失败:', err);
+      return res.status(500).json({ success: false, message: '服务器错误' });
+    }
+
+    if (!authorId) {
+      return res.status(404).json({ success: false, message: '帖子不存在' });
+    }
+
+    // 检查权限
+    if (!authorize(req, authorId, false)) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限执行此操作'
+      });
+    }
+
+    // 如果有权限，继续执行删除操作
+    const query = `
+      UPDATE posts
+      SET deleted_at = CURRENT_TIMESTAMP
+      WHERE post_id = ?
+    `;
+
+    db.query(query, [postId], (err, result) => {
+      if (err) {
+        console.error('删除帖子失败:', err);
+        return res.status(500).json({ success: false, message: '删除帖子失败' });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: '帖子不存在' });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: '帖子已删除'
+      });
+    });
+  });
+});
+
+// 软删除评论的API（已修改）
+app.put('/api/comments/:commentId', verifyToken, (req, res) => {
+  const { commentId } = req.params;
+
+  // 先获取评论作者ID
+  getCommentAuthorId(commentId, (err, authorId) => {
+    if (err) {
+      console.error('获取评论作者失败:', err);
+      return res.status(500).json({ success: false, message: '服务器错误' });
+    }
+
+    if (!authorId) {
+      return res.status(404).json({ success: false, message: '评论不存在' });
+    }
+
+    // 检查权限
+    if (!authorize(req, authorId, false)) {
+      return res.status(403).json({
+        success: false,
+        message: '没有权限执行此操作'
+      });
+    }
+
+    // 如果有权限，继续执行删除操作
+    const query = `
+      UPDATE comments
+      SET deleted_at = CURRENT_TIMESTAMP
+      WHERE comment_id = ?
+    `;
+
+    db.query(query, [commentId], (err, result) => {
+      if (err) {
+        console.error('删除评论失败:', err);
+        return res.status(500).json({ success: false, message: '删除评论失败' });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: '评论不存在' });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: '评论已删除'
+      });
+    });
+  });
+});
+
+//帖子点赞功能
+
+app.post('/api/likes', verifyToken, (req, res) => {
+  const { postId, commentId } = req.body; // 从请求体中获取 postId 和 commentId
+  const user_id = req.user.id; // 假设通过验证获取到的用户ID
+
+  // 判断是点赞帖子还是评论，确保只有其中一个有值
+  let targetId = null;
+  let isPostLike = false;
+
+  if (postId) {
+    targetId = postId;
+    isPostLike = true;
+  } else if (commentId) {
+    targetId = commentId;
+    isPostLike = false;
+  } else {
+    return res.status(400).json({ success: false, message: '必须提供 postId 或 commentId' });
+  }
+
+  // 构建查询语句，检查是否已经有点赞记录
+  let query;
+  let values;
+
+  if (isPostLike) {
+    // 点赞帖子
+    query = `
+      SELECT id, islike FROM likes 
+      WHERE user_id = ? AND post_id = ? AND comment_id IS NULL
+    `;
+    values = [user_id, targetId];
+  } else {
+    // 点赞评论
+    query = `
+      SELECT id, islike FROM likes 
+      WHERE user_id = ? AND comment_id = ? AND post_id IS NULL
+    `;
+    values = [user_id, targetId];
+  }
+
+  db.query(query, values, (err, results) => {
+    if (err) {
+      console.error('查询点赞失败:', err);
+      return res.status(500).json({ success: false, message: '查询点赞失败' });
+    }
+
+    if (results.length > 0) {
+      // 如果已经有点赞记录，更新 islike 状态（取反）
+      const likeId = results[0].id;
+      const newIsLike = results[0].islike === 1 ? 0 : 1;
+
+      let updateQuery;
+      let updateValues;
+
+      if (isPostLike) {
+        // 更新帖子点赞
+        updateQuery = `
+          UPDATE likes 
+          SET islike = ?, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `;
+        updateValues = [newIsLike, likeId];
+      } else {
+        // 更新评论点赞
+        updateQuery = `
+          UPDATE likes 
+          SET islike = ?, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `;
+        updateValues = [newIsLike, likeId];
+      }
+
+      db.query(updateQuery, updateValues, (updateErr) => {
+        if (updateErr) {
+          console.error('更新点赞失败:', updateErr);
+          return res.status(500).json({ success: false, message: '更新点赞失败' });
+        }
+
+        // 更新对应帖子或评论的点赞数
+        if (isPostLike) {
+          // 更新帖子的点赞数
+          const postLikesQuery = `
+            UPDATE posts 
+            SET likes = likes + (CASE WHEN ? = 1 THEN 1 ELSE -1 END)
+            WHERE post_id = ?
+          `;
+          db.query(postLikesQuery, [newIsLike, targetId], (postLikesErr) => {
+            if (postLikesErr) console.error('更新帖子点赞数失败:', postLikesErr);
+          });
+        } else {
+          // 更新评论的点赞数
+          const commentLikesQuery = `
+            UPDATE comments 
+            SET likes = likes + (CASE WHEN ? = 1 THEN 1 ELSE -1 END)
+            WHERE comment_id = ?
+          `;
+          db.query(commentLikesQuery, [newIsLike, targetId], (commentLikesErr) => {
+            if (commentLikesErr) console.error('更新评论点赞数失败:', commentLikesErr);
+          });
+        }
+
+        res.status(200).json({
+          success: true,
+          message: newIsLike ? '点赞成功' : '取消点赞成功',
+          data: { likeId, isLike: newIsLike }
+        });
+      });
+    } else {
+      // 如果没有点赞记录，插入新的点赞记录
+      let insertQuery;
+      let insertValues;
+
+      if (isPostLike) {
+        // 插入帖子点赞
+        insertQuery = `
+          INSERT INTO likes (user_id, post_id, islike)
+          VALUES (?, ?, 1)
+        `;
+        insertValues = [user_id, targetId];
+      } else {
+        // 插入评论点赞
+        insertQuery = `
+          INSERT INTO likes (user_id, comment_id, islike)
+          VALUES (?, ?, 1)
+        `;
+        insertValues = [user_id, targetId];
+      }
+
+      db.query(insertQuery, insertValues, (insertErr, insertResult) => {
+        if (insertErr) {
+          console.error('创建点赞失败:', insertErr);
+          return res.status(500).json({ success: false, message: '创建点赞失败' });
+        }
+
+        // 更新对应帖子或评论的点赞数
+        if (isPostLike) {
+          // 更新帖子的点赞数
+          const postLikesQuery = `
+            UPDATE posts 
+            SET likes = likes + 1
+            WHERE post_id = ?
+          `;
+          db.query(postLikesQuery, [targetId], (postLikesErr) => {
+            if (postLikesErr) console.error('更新帖子点赞数失败:', postLikesErr);
+          });
+        } else {
+          // 更新评论的点赞数
+          const commentLikesQuery = `
+            UPDATE comments 
+            SET likes = likes + 1
+            WHERE comment_id = ?
+          `;
+          db.query(commentLikesQuery, [targetId], (commentLikesErr) => {
+            if (commentLikesErr) console.error('更新评论点赞数失败:', commentLikesErr);
+          });
+        }
+
+        res.status(201).json({
+          success: true,
+          message: '点赞成功',
+          data: { likeId: insertResult.insertId, isLike: true }
+        });
+      });
+    }
+  });
+});
+
+// ... existing code ...
+
+// AI助手相关路由
+app.post('/api/ai/query', async (req, res) => {
+    try {
+        const { question } = req.body;
+        
+        // 解析问题类型
+        const questionType = analyzeQuestionType(question);
+        
+        // 根据问题类型查询数据库
+        let result;
+        switch(questionType) {
+            case 'user_points':
+                result = await queryUserPoints(question);
+                break;
+            case 'activity_info':
+                result = await queryActivityInfo(question);
+                break;
+            case 'club_info':
+                result = await queryClubInfo(question);
+                break;
+            case 'statistics':
+                result = await queryStatistics(question);
+                break;
+            default:
+                result = { error: '抱歉，我暂时无法理解您的问题' };
+        }
+        
+        res.json(result);
+    } catch (error) {
+        console.error('AI查询错误:', error);
+        res.status(500).json({ error: '服务器错误' });
+    }
+});
+
+// 分析问题类型
+function analyzeQuestionType(question) {
+    if (question.includes('积分') || question.includes('分数')) {
+        return 'user_points';
+    } else if (question.includes('活动') || question.includes('比赛')) {
+        return 'activity_info';
+    } else if (question.includes('社团') || question.includes('协会')) {
+        return 'club_info';
+    } else if (question.includes('统计') || question.includes('分析')) {
+        return 'statistics';
+    }
+    return 'unknown';
+}
+
+// 查询用户积分
+async function queryUserPoints(question) {
+    const username = extractUsername(question);
+    if (!username) {
+        return { error: '请指定要查询的用户名' };
+    }
+    
+    const [user] = await db.query('SELECT id FROM users WHERE username = ?', [username]);
+    if (!user) {
+        return { error: '未找到该用户' };
+    }
+    
+    const [points] = await db.query(`
+        SELECT SUM(points) as total_points 
+        FROM points 
+        WHERE user_id = ?
+    `, [user.id]);
+    
+    return {
+        type: 'user_points',
+        username,
+        total_points: points.total_points || 0
+    };
+}
+
+// 查询活动信息
+async function queryActivityInfo(question) {
+    const activityName = extractActivityName(question);
+    if (!activityName) {
+        return { error: '请指定要查询的活动名称' };
+    }
+    
+    const [activity] = await db.query(`
+        SELECT a.*, c.name as club_name 
+        FROM activities a 
+        JOIN clubs c ON a.club_id = c.id 
+        WHERE a.title LIKE ?
+    `, [`%${activityName}%`]);
+    
+    if (!activity) {
+        return { error: '未找到该活动' };
+    }
+    
+    return {
+        type: 'activity_info',
+        activity
+    };
+}
+
+// 查询社团信息
+async function queryClubInfo(question) {
+    const clubName = extractClubName(question);
+    if (!clubName) {
+        return { error: '请指定要查询的社团名称' };
+    }
+    
+    const [club] = await db.query(`
+        SELECT c.*, u.username as leader_name 
+        FROM clubs c 
+        JOIN users u ON c.leader_id = u.id 
+        WHERE c.name LIKE ?
+    `, [`%${clubName}%`]);
+    
+    if (!club) {
+        return { error: '未找到该社团' };
+    }
+    
+    return {
+        type: 'club_info',
+        club
+    };
+}
+
+// 查询统计数据
+async function queryStatistics(question) {
+    if (question.includes('最活跃')) {
+        const [mostActiveClub] = await db.query(`
+            SELECT c.name, COUNT(a.id) as activity_count 
+            FROM clubs c 
+            LEFT JOIN activities a ON c.id = a.club_id 
+            GROUP BY c.id 
+            ORDER BY activity_count DESC 
+            LIMIT 1
+        `);
+        
+        return {
+            type: 'statistics',
+            most_active_club: mostActiveClub
+        };
+    }
+    
+    if (question.includes('积分最高')) {
+        const [topUser] = await db.query(`
+            SELECT u.username, SUM(p.points) as total_points 
+            FROM users u 
+            LEFT JOIN points p ON u.id = p.user_id 
+            GROUP BY u.id 
+            ORDER BY total_points DESC 
+            LIMIT 1
+        `);
+        
+        return {
+            type: 'statistics',
+            top_user: topUser
+        };
+    }
+    
+    return { error: '请指定具体的统计类型' };
+}
+
+// 辅助函数：提取用户名
+function extractUsername(question) {
+    const match = question.match(/(?:用户|同学|学生)?([\u4e00-\u9fa5a-zA-Z0-9]+)(?:的积分|的分数)/);
+    return match ? match[1] : null;
+}
+
+// 辅助函数：提取活动名称
+function extractActivityName(question) {
+    const match = question.match(/(?:活动|比赛)?([\u4e00-\u9fa5a-zA-Z0-9]+)(?:的|是|在)/);
+    return match ? match[1] : null;
+}
+
+// 辅助函数：提取社团名称
+function extractClubName(question) {
+    const match = question.match(/(?:社团|协会)?([\u4e00-\u9fa5a-zA-Z0-9]+)(?:的|是|在)/);
+    return match ? match[1] : null;
+}
+

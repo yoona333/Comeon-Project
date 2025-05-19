@@ -29,6 +29,7 @@ interface Role {
   description: string;
   permissions: string[];
   created_at: string;
+  role?: number;
 }
 
 // 定义 roleOptions
@@ -391,7 +392,7 @@ const UserRolesPage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_, record: User) => (
+      render: (_: any, record: User) => (
         <Space>
           <Button type="primary" size="small" icon={<EditOutlined />} onClick={() => showModal(record)}>
             编辑

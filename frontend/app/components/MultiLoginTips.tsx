@@ -6,9 +6,10 @@ import { InfoCircleOutlined, UserOutlined, CrownOutlined, SafetyCertificateOutli
 
 interface MultiLoginTipsProps {
   position?: 'top' | 'bottom';
+  forPage?: string;
 }
 
-export default function MultiLoginTips({ position = 'top' }: MultiLoginTipsProps) {
+export default function MultiLoginTips({ position = 'top', forPage }: MultiLoginTipsProps) {
   const [visible, setVisible] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [storage, setStorage] = useState<'local' | 'session' | 'none'>('none');

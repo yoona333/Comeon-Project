@@ -31,7 +31,7 @@ export default function StudentReservations() {
   useEffect(() => {
     checkAuth();
   }, []);
-0
+
   const checkAuth = () => {
     const token = localStorage.getItem('token');
     if (!token) {
