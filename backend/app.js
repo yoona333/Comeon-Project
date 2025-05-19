@@ -4620,3 +4620,158 @@ function extractClubName(question) {
     return match ? match[1] : null;
 }
 
+
+//////
+app.get('/api/clubs', verifyToken, (req, res) => {
+  console.log('查询社团');
+  const query = `
+    SELECT 
+      c.*,
+      u.username as leader_username,
+      COUNT(cm.id) as member_count
+    FROM clubs c
+    LEFT JOIN users u ON c.leader_id = u.id
+    LEFT JOIN club_members cm ON c.id = cm.club_id AND cm.status = 1
+    WHERE c.leader_id = u.id OR c.leader_id IS NULL
+    GROUP BY c.id
+    ORDER BY c.created_at DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('获取社团列表失败:', err);
+      return res.status(500).json({ success: false, message: '获取社团列表失败' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+// 获取用户已加入的社团
+app.get('/api/clubs/joins', verifyToken, (req, res) => {
+  const userId = req.userId;
+
+  const query = `
+    SELECT cm.club_id, cm.status
+    FROM club_members cm
+    WHERE cm.user_id = ? AND cm.status = 1
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('获取用户已加入的社团失败:', err);
+      return res.status(500).json({ success: false, message: '获取用户已加入的社团失败' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+// 创建新社团成员的API
+app.post('/api/clubs/:clubId/join', verifyToken, (req, res) => {
+  const { clubId } = req.params;
+  const userId = req.user.id; // 假设通过验证获取到的用户ID
+  console.log("clubId:",clubId);
+
+  // 确保 userId 和 clubId 是有效的数字
+  if (!userId || !clubId || isNaN(userId) || isNaN(clubId)) {
+    return res.status(400).json({ success: false, message: '无效的用户或社团ID' });
+  }
+
+  // 检查用户是否已在该社团中
+  const checkQuery = `
+    SELECT id
+    FROM club_members
+    WHERE club_id = ? AND user_id = ?
+  `;
+
+  db.query(checkQuery, [clubId, userId], (err, results) => {
+    if (err) {
+      console.error('检查社团成员失败:', err);
+      return res.status(500).json({ success: false, message: '检查社团成员失败' });
+    }
+
+    // 如果用户已经在社团中，则返回错误
+    if (results.length > 0) {
+      return res.status(400).json({ success: false, message: '用户已在该社团中' });
+    }
+
+    // 插入新的社团成员
+    const insertQuery = `
+      INSERT INTO club_members (club_id, user_id, role, status)
+      VALUES (?, ?, 1, 1)
+    `;
+
+    db.query(insertQuery, [clubId, userId], (err, result) => {
+      if (err) {
+        console.error('加入社团失败:', err);
+        return res.status(500).json({ success: false, message: '加入社团失败' });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          id: result.insertId,
+          club_id: clubId,
+          user_id: userId,
+          role: 1,
+          status: 1
+        }
+      });
+    });
+  });
+});
+
+// 用户退出社团的API
+app.delete('/api/clubs/:clubId/leave', verifyToken, (req, res) => {
+  const { clubId } = req.params;
+  const userId = req.user.id; // 假设通过验证获取到的用户ID
+
+  // 确保 userId 和 clubId 是有效的数字
+  if (!userId || !clubId || isNaN(userId) || isNaN(clubId)) {
+    return res.status(400).json({ success: false, message: '无效的用户或社团ID' });
+  }
+
+  // 检查用户是否在该社团中
+  const checkQuery = `
+    SELECT id
+    FROM club_members
+    WHERE club_id = ? AND user_id = ?
+  `;
+
+  db.query(checkQuery, [clubId, userId], (err, results) => {
+    if (err) {
+      console.error('检查社团成员失败:', err);
+      return res.status(500).json({ success: false, message: '检查社团成员失败' });
+    }
+
+    // 如果用户不在社团中，则返回错误
+    if (results.length === 0) {
+      return res.status(400).json({ success: false, message: '用户不在该社团中' });
+    }
+
+    // 删除社团成员
+    const deleteQuery = `
+      DELETE FROM club_members
+      WHERE club_id = ? AND user_id = ?
+    `;
+
+    db.query(deleteQuery, [clubId, userId], (err, result) => {
+      if (err) {
+        console.error('退出社团失败:', err);
+        return res.status(500).json({ success: false, message: '退出社团失败' });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: '退出社团成功'
+      });
+    });
+  });
+});

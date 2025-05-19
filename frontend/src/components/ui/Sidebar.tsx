@@ -156,7 +156,7 @@ export default function Sidebar({ collapsed }: SidebarProps) {
 
   // 根据角色创建不同的菜单项
   let menuItems: MenuProps['items'] = [...baseMenuItems];
-
+  
   if (role === 0) { // 管理员
     menuItems = [
       ...baseMenuItems,
@@ -203,10 +203,6 @@ export default function Sidebar({ collapsed }: SidebarProps) {
             key: 'user-list',
             label: <Link href={`${homeRole}/users`}>用户列表</Link>,
           },
-          // {
-          //   key: 'user-roles',
-          //   label: <Link href={`${homeRole}/users/roles`}>角色管理</Link>,
-          // }
         ]
       },
       {
@@ -214,10 +210,6 @@ export default function Sidebar({ collapsed }: SidebarProps) {
         icon: <SettingOutlined />,
         label: <>系统设置</>,
         children: [
-          // {
-          //   key: 'system-settings',
-          //   label: <Link href={`${homeRole}/settings`}>基本设置</Link>,
-          // },
           {
             key: 'change-password',
             label: <Link href={`${homeRole}/change-password`}>修改密码</Link>,
@@ -229,20 +221,9 @@ export default function Sidebar({ collapsed }: SidebarProps) {
         key: 'club-points',
         icon: <KeyOutlined />,
         label: <Link href={`${homeRole}/club-points`}>社团积分论坛</Link>,
-      },
-      {
-        key: 'points-management',
-        icon: <TrophyOutlined />,
-        label: <>积分管理</>,
-        children: [
-          {
-            key: 'points-onchain',
-            label: <Link href={`${homeRole}/points/blockchain`}>积分上链</Link>,
-          }
-        ]
       }
     ];
-  } else if (role === 1 || role === 2) { // 学生或社长
+  } else if (role === 1) { // 学生
     menuItems = [
       ...baseMenuItems,
       {
@@ -250,14 +231,12 @@ export default function Sidebar({ collapsed }: SidebarProps) {
         icon: <AppstoreOutlined />,
         label: <Link href={`${homeRole}/activities`}>活动列表</Link>,
       },
-      
       {
         key: 'my-activities',
         icon: <CalendarOutlined />,
         label: <Link href={`${homeRole}/my-activities`}>我的活动</Link>,
       },
       {
-        // 新增活动预约菜单项
         key: 'activity-booking',
         icon: <AuditOutlined />, // 可以根据需求更换图标
         label: <Link href={`${homeRole}/activity-booking`}>活动预约</Link>,
@@ -272,19 +251,27 @@ export default function Sidebar({ collapsed }: SidebarProps) {
         icon: <UserOutlined />,
         label: <Link href={`${homeRole}/profile`}>个人信息</Link>,
       },
-      // 为学生和社长添加社团积分列表菜单项
+      // 新增社团选项，仅在学生角色（role === 1）显示
+      ...(role === 1 ? [
+        {
+          key: 'clubs',
+          icon: <TeamOutlined />,
+          label: <Link href={`${homeRole}/clubs`}>社团列表</Link>,
+        }
+      ] : []),
       {
         key: 'club-points',
         icon: <KeyOutlined />,
         label: <Link href={`${homeRole}/club-points`}>社团积分论坛</Link>,
       }
     ];
-
-    if (role === 2) { // 社长
-      menuItems.push({
+  } else if (role === 2) { // 社团管理员（社长）
+    menuItems = [
+      ...baseMenuItems,
+      {
         key: 'club-management',
         icon: <CrownOutlined />,
-        label: <>社长功能</>,
+        label: <>社团管理员操作</>,
         children: [
           {
             key: 'create-activity',
@@ -299,8 +286,8 @@ export default function Sidebar({ collapsed }: SidebarProps) {
             label: <Link href={`${homeRole}/activity-stats`}>活动统计</Link>,
           }
         ]
-      });
-    }
+      }
+    ];
   }
 
   // 在客户端渲染之前返回一个空的侧边栏
